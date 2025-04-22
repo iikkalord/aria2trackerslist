@@ -1,48 +1,35 @@
-name: Tracker Processor
+name: Process Trackers
 
 on:
-  schedule:
-    - cron: '0 12 * * *'  # 每天UTC 12:00 (北京时间20:00)
-  workflow_dispatch:
   push:
-    branches: [ main ]
+    branches:
+      - main
+  workflow_dispatch:
 
 jobs:
   process:
     runs-on: ubuntu-latest
-    steps:
-    - name: Checkout
-      uses: actions/checkout@v4
 
-    - name: Fetch Sources
+    steps:
+    - name: Checkout repository
+      uses: actions/checkout@v3
+
+    - name: Create data directory
+      run: mkdir -p data
+
+    - name: Download tracker files
       run: |
-        sources=(
-          "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_https.txt"
-          "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_ws.txt"
-          "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_udp.txt"
-          "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_i2p.txt"
-          "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best_ip.txt"
-        )
-        for url in "${sources[@]}"; do
-          wget -qO "${url##*/}" "$url"
-          if [[ ! -s "${url##*/}" ]]; then
-            echo "Error: Failed to download ${url}"
-            exit 1
-          fi
-        done
-        
-    - name: Validate Input Files
-      run: |
-        if ! ls *.txt 1> /dev/null 2>&1; then
-          echo "Error: No input files found."
-          exit 1
-        fi
-        
-    - name: Process Data
-      run: |
-        # Use wildcard expansion for input files
-        chmod +x src/process.sh
-        ./src/process.sh -i "$(echo *.txt)" -o processed.txt
+        curl -o data/trackers_all_https.txt https://example.com/trackers_all_https.txt
+        curl -o data/trackers_all_i2p.txt https://example.com/trackers_all_i2p.txt
+        curl -o data/trackers_all_udp.txt https://example.com/trackers_all_udp.txt
+        curl -o data/trackers_all_ws.txt https://example.com/trackers_all_ws.txt
+        curl -o data/trackers_best_ip.txt https://example.com/trackers_best_ip.txt
+
+    - name: Make process.sh executable
+      run: chmod +x src/process.sh
+
+    - name: Run process script
+      run: ./src/process.sh -i "data/*.txt" -o processed.txt
 
     - name: Push Update
       uses: EndBug/add-and-commit@v9
