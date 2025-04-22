@@ -54,15 +54,22 @@ jobs:
         sudo apt-get update -qq
         sudo apt-get install -qq --no-install-recommends grep sed coreutils
         [ -x src/process.sh ] || chmod +x src/process.sh
-
+    
     - name: Process data
       run: |
-        input_files=$(find data -name '*.txt' -size +0c -print0 | xargs -0)
-        if [[ -z "$input_files" ]]; then
-          echo "Error: No valid input files found."
-          exit 1
+        # 使用数组存储文件列表，避免空格问题
+        input_files=()
+        while IFS= read -r -d $'\0' file; do
+            input_files+=("$file")
+        done < <(find data -name '*.txt' -size +0c -print0)
+    
+        if [[ ${#input_files[@]} -eq 0 ]]; then
+            echo "Error: No valid input files found."
+            exit 1
         fi
-        ./src/process.sh -i "$input_files" -o processed.txt
+    
+        # 传递数组元素作为多个参数
+        ./src/process.sh -i "${input_files[@]}" -o processed.txt
         [ -s processed.txt ] || exit 1
 
     - name: Commit processed result  # 第二次提交：处理结果
