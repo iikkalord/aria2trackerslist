@@ -11,19 +11,15 @@ on:
 jobs:
   process:
     runs-on: ubuntu-latest
-
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v4  # 升级到最新版本
+      uses: actions/checkout@v4
 
     - name: Create directory structure
-      run: |
-        mkdir -p data
-        mkdir -p src
+      run: mkdir -p data src
 
     - name: Download tracker files
-      run: |
-        # 定义要下载的文件列表
+      run: |  # ↓ 此处为下载步骤的完整代码（注意缩进对齐）
         declare -A files=(
           ["https"]="trackers_all_https.txt"
           ["i2p"]="trackers_all_i2p.txt"
@@ -31,58 +27,29 @@ jobs:
           ["ws"]="trackers_all_ws.txt"
           ["best_ip"]="trackers_best_ip.txt"
         )
-
-        # 带重试机制的下载
         for key in "${!files[@]}"; do
           url="https://raw.githubusercontent.com/ngosang/trackerslist/master/${files[$key]}"
           echo "正在下载: $url"
-          curl -sfL --retry 3 --connect-timeout 15 \
-            -o "data/${files[$key]}" "$url" || {
-            echo "错误: 下载失败 $url"
-            exit 1
-          }
-          
-          # 基础内容验证
-          if [ ! -s "data/${files[$key]}" ]; then
-            echo "错误: 文件内容为空 $url"
-            exit 1
-          fi
+          curl -sfL --retry 3 --connect-timeout 15 -o "data/${files[$key]}" "$url" || exit 1
+          [ -s "data/${files[$key]}" ] || exit 1
         done
-        
-        - name: Setup processing environment
-          run: |
-            # 更新软件源
-            sudo apt-get update -qq
-            
-            # 安装最小化依赖
-            sudo apt-get install -qq --no-install-recommends \
-              grep \
-              sed \
-              coreutils \
-              findutils
-            
-            # 验证处理脚本
-            if [ ! -f src/process.sh ]; then
-              echo "::error::处理脚本不存在于 src/process.sh"
-              exit 1
-            fi
-            
-            if ! chmod +x src/process.sh || [ ! -x src/process.sh ]; then
-              echo "::error::无法设置执行权限"
-              exit 1
-            fi
+
+    - name: Setup processing environment  # ← 修正为独立步骤
+      run: |  # ↓ 独立的环境设置步骤
+        sudo apt-get update -qq
+        sudo apt-get install -qq --no-install-recommends grep sed coreutils findutils
+        if [ ! -f src/process.sh ]; then
+          echo "::error::处理脚本不存在于 src/process.sh"
+          exit 1
+        fi
+        chmod +x src/process.sh || exit 1
 
     - name: Run process script
       run: |
-        # 使用 find 处理多个文件
         input_files=$(find data -name '*.txt' -print0 | xargs -0)
         ./src/process.sh -i "$input_files" -o processed.txt
-        
-        # 验证输出文件
-        if [ ! -s processed.txt ] || ! grep -q 'udp://' processed.txt; then
-          echo "错误: 处理后的文件无效"
-          exit 1
-        fi
+        [ -s processed.txt ] || exit 1
+        grep -q 'udp://' processed.txt || exit 1
 
     - name: Commit changes
       uses: EndBug/add-and-commit@v9
