@@ -11,15 +11,16 @@ on:
 jobs:
   process:
     runs-on: ubuntu-latest
+
     steps:
     - name: Checkout repository
       uses: actions/checkout@v4
 
-    - name: Create directory structure
+    - name: Create directories
       run: mkdir -p data src
 
-    - name: Download tracker files
-      run: |  # ↓ 此处为下载步骤的完整代码（注意缩进对齐）
+    - name: Download trackers
+      run: |
         declare -A files=(
           ["https"]="trackers_all_https.txt"
           ["i2p"]="trackers_all_i2p.txt"
@@ -29,36 +30,39 @@ jobs:
         )
         for key in "${!files[@]}"; do
           url="https://raw.githubusercontent.com/ngosang/trackerslist/master/${files[$key]}"
-          echo "正在下载: $url"
+          echo "下载: $url"
           curl -sfL --retry 3 --connect-timeout 15 -o "data/${files[$key]}" "$url" || exit 1
           [ -s "data/${files[$key]}" ] || exit 1
         done
 
-    - name: Setup processing environment  # ← 修正为独立步骤
-      run: |  # ↓ 独立的环境设置步骤
-        sudo apt-get update -qq
-        sudo apt-get install -qq --no-install-recommends grep sed coreutils findutils
-        if [ ! -f src/process.sh ]; then
-          echo "::error::处理脚本不存在于 src/process.sh"
-          exit 1
-        fi
-        chmod +x src/process.sh || exit 1
+    - name: Commit raw data  # 第一次提交：仅原始数据
+      uses: EndBug/add-and-commit@v9
+      with:
+        add: 'data/*.txt'
+        commit_message: 'Auto-Update Raw Trackers (UTC: $(date -u +"%Y-%m-%dT%H:%M:%S"))'
+        signoff: true
+        skip_empty: true
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
 
-    - name: Run process script
+    - name: Setup environment
+      run: |
+        sudo apt-get update -qq
+        sudo apt-get install -qq --no-install-recommends grep sed coreutils
+        [ -x src/process.sh ] || chmod +x src/process.sh
+
+    - name: Process data
       run: |
         input_files=$(find data -name '*.txt' -print0 | xargs -0)
         ./src/process.sh -i "$input_files" -o processed.txt
         [ -s processed.txt ] || exit 1
-        grep -q 'udp://' processed.txt || exit 1
 
-    - name: Commit changes
+    - name: Commit processed result  # 第二次提交：处理结果
       uses: EndBug/add-and-commit@v9
       with:
-        add: 'data/*.txt processed.txt'  # 同时提交原始数据和处理结果
-        tag: 'trackers-$(date +%s)'  # 添加时间戳标签
-        signoff: true                # 添加签名
-        commit_message: 'Auto Update Trackers (UTC: $(date -u +"%Y-%m-%dT%H:%M:%S")'
-        # 过滤空提交
-        skip_empty: true  
+        add: 'processed.txt'
+        commit_message: 'Auto-Update Processed Trackers (UTC: $(date -u +"%Y-%m-%dT%H:%M:%S"))'
+        signoff: true
+        skip_empty: true
       env:
-        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 添加必要的权限
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
