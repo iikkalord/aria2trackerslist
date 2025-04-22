@@ -1,6 +1,8 @@
 name: Process Trackers
 
 on:
+  schedule:
+    - cron: '0 12 * * *'  # 每天UTC时间12点自动运行
   push:
     branches:
       - main
@@ -12,27 +14,73 @@ jobs:
 
     steps:
     - name: Checkout repository
-      uses: actions/checkout@v3
+      uses: actions/checkout@v4  # 升级到最新版本
 
-    - name: Create data directory
-      run: mkdir -p data
+    - name: Create directory structure
+      run: |
+        mkdir -p data
+        mkdir -p src
 
     - name: Download tracker files
       run: |
-        curl -o data/trackers_all_https.txt https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_https.txt
-        curl -o data/trackers_all_i2p.txt https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_i2p.txt
-        curl -o data/trackers_all_udp.txt https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_udp.txt
-        curl -o data/trackers_all_ws.txt https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_ws.txt
-        curl -o data/trackers_best_ip.txt https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best_ip.txt
+        # 定义要下载的文件列表
+        declare -A files=(
+          ["https"]="trackers_all_https.txt"
+          ["i2p"]="trackers_all_i2p.txt"
+          ["udp"]="trackers_all_udp.txt"
+          ["ws"]="trackers_all_ws.txt"
+          ["best_ip"]="trackers_best_ip.txt"
+        )
 
-    - name: Make process.sh executable
-      run: chmod +x src/process.sh
+        # 带重试机制的下载
+        for key in "${!files[@]}"; do
+          url="https://raw.githubusercontent.com/ngosang/trackerslist/master/${files[$key]}"
+          echo "正在下载: $url"
+          curl -sfL --retry 3 --connect-timeout 15 \
+            -o "data/${files[$key]}" "$url" || {
+            echo "错误: 下载失败 $url"
+            exit 1
+          }
+          
+          # 基础内容验证
+          if [ ! -s "data/${files[$key]}" ]; then
+            echo "错误: 文件内容为空 $url"
+            exit 1
+          fi
+        done
+
+    - name: Setup processing environment
+      run: |
+        # 安装必要依赖
+        sudo apt-get qq install grep sed
+
+        # 确保处理脚本存在
+        if [ ! -f src/process.sh ]; then
+          echo "错误: process.sh 不存在！"
+          exit 1
+        fi
+        chmod +x src/process.sh
 
     - name: Run process script
-      run: ./src/process.sh -i "data/*.txt" -o processed.txt
+      run: |
+        # 使用 find 处理多个文件
+        input_files=$(find data -name '*.txt' -print0 | xargs -0)
+        ./src/process.sh -i "$input_files" -o processed.txt
+        
+        # 验证输出文件
+        if [ ! -s processed.txt ] || ! grep -q 'udp://' processed.txt; then
+          echo "错误: 处理后的文件无效"
+          exit 1
+        fi
 
-    - name: Push Update
+    - name: Commit changes
       uses: EndBug/add-and-commit@v9
       with:
-        add: 'processed.txt'
-        message: 'Auto Update Trackers'
+        add: 'data/*.txt processed.txt'  # 同时提交原始数据和处理结果
+        tag: 'trackers-$(date +%s)'  # 添加时间戳标签
+        signoff: true                # 添加签名
+        commit_message: 'Auto Update Trackers (UTC: $(date -u +"%Y-%m-%dT%H:%M:%S")'
+        # 过滤空提交
+        skip_empty: true  
+      env:
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}  # 添加必要的权限
