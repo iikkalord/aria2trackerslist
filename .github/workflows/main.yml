@@ -43,9 +43,10 @@ jobs:
       uses: EndBug/add-and-commit@v9
       with:
         add: 'data/*.txt'
-        message: 'Auto-Update Raw Trackers (UTC: $(date -u +"%Y-%m-%dT%H:%M:%S"))'
-        signoff: true
-        skip_empty: true
+        message: 'Auto-Update Raw Trackers (UTC: $(date -u +"%Y-%m-%dT%H:%M:%S"))'  # 修正参数名
+        # 移除非法的 signoff 和 skip_empty 参数
+        # 通过 git config 添加签名
+        commit: "--signoff --allow-empty"  # 新版本使用 commit 参数传递 git 选项
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
         
@@ -75,12 +76,11 @@ jobs:
         ./src/process.sh "${args[@]}" -o processed.txt
         [ -s processed.txt ] || exit 1
 
-    - name: Commit processed result  # 第二次提交：处理结果
+    - name: Commit processed result
       uses: EndBug/add-and-commit@v9
       with:
         add: 'processed.txt'
-        commit_message: 'Auto-Update Processed Trackers (UTC: $(date -u +"%Y-%m-%dT%H:%M:%S"))'
-        signoff: true
-        skip_empty: true
+        message: 'Auto-Update Processed Trackers (UTC: $(date -u +"%Y-%m-%dT%H:%M:%S"))'  # 修正参数名
+        commit: "--signoff --allow-empty"  # 合并签名和空提交选项
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
