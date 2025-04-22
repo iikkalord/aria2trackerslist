@@ -26,12 +26,18 @@ jobs:
         for url in "${sources[@]}"; do
           wget -qO "${url##*/}" "$url"
         done
-
+    - name: Validate Input Files
+      run: |
+        if ! ls *.txt 1> /dev/null 2>&1; then
+          echo "Error: No input files found."
+          exit 1
+        fi
+        
     - name: Process Data
       run: |
-        # 使用项目自带的处理脚本
+        # Use wildcard expansion for input files
         chmod +x src/process.sh
-        ./src/process.sh -i *.txt -o processed.txt
+        ./src/process.sh -i "$(echo *.txt)" -o processed.txt
 
     - name: Push Update
       uses: EndBug/add-and-commit@v9
