@@ -25,7 +25,12 @@ jobs:
         )
         for url in "${sources[@]}"; do
           wget -qO "${url##*/}" "$url"
+          if [[ ! -s "${url##*/}" ]]; then
+            echo "Error: Failed to download ${url}"
+            exit 1
+          fi
         done
+        
     - name: Validate Input Files
       run: |
         if ! ls *.txt 1> /dev/null 2>&1; then
