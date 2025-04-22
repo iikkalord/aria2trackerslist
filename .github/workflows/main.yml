@@ -65,4 +65,4 @@ jobs:
         signoff: true
         skip_empty: true
       env:
-        GITHUB_TOKEN: ${{ secrets.TOKEN }}
+        GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
