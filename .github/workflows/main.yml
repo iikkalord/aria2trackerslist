@@ -1,0 +1,40 @@
+name: Tracker Processor
+
+on:
+  schedule:
+    - cron: '0 12 * * *'  # 每天UTC 12:00 (北京时间20:00)
+  workflow_dispatch:
+  push:
+    branches: [ main ]
+
+jobs:
+  process:
+    runs-on: ubuntu-latest
+    steps:
+    - name: Checkout
+      uses: actions/checkout@v4
+
+    - name: Fetch Sources
+      run: |
+        sources=(
+          "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_https.txt"
+          "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_ws.txt"
+          "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_udp.txt"
+          "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_i2p.txt"
+          "https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best_ip.txt"
+        )
+        for url in "${sources[@]}"; do
+          wget -qO "${url##*/}" "$url"
+        done
+
+    - name: Process Data
+      run: |
+        # 使用项目自带的处理脚本
+        chmod +x src/process.sh
+        ./src/process.sh -i *.txt -o processed.txt
+
+    - name: Push Update
+      uses: EndBug/add-and-commit@v9
+      with:
+        add: 'processed.txt'
+        message: 'Auto Update Trackers'
