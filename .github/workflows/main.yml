@@ -39,16 +39,16 @@ jobs:
           fi
         done
 
-    - name: Commit raw data  # 第一次提交：仅原始数据
+    - name: Commit raw data
       uses: EndBug/add-and-commit@v9
       with:
         add: 'data/*.txt'
-        commit_message: 'Auto-Update Raw Trackers (UTC: $(date -u +"%Y-%m-%dT%H:%M:%S"))'
+        message: 'Auto-Update Raw Trackers (UTC: $(date -u +"%Y-%m-%dT%H:%M:%S"))'
         signoff: true
         skip_empty: true
       env:
         GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
-
+        
     - name: Setup environment
       run: |
         sudo apt-get update -qq
@@ -57,7 +57,6 @@ jobs:
     
     - name: Process data
       run: |
-        # 使用数组存储文件列表，避免空格问题
         input_files=()
         while IFS= read -r -d $'\0' file; do
             input_files+=("$file")
@@ -68,8 +67,12 @@ jobs:
             exit 1
         fi
     
-        # 传递数组元素作为多个参数
-        ./src/process.sh -i "${input_files[@]}" -o processed.txt
+        # 构建参数数组，每个文件单独添加 -i 参数
+        args=()
+        for file in "${input_files[@]}"; do
+            args+=(-i "$file")
+        done
+        ./src/process.sh "${args[@]}" -o processed.txt
         [ -s processed.txt ] || exit 1
 
     - name: Commit processed result  # 第二次提交：处理结果
