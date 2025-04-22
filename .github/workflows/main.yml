@@ -57,7 +57,11 @@ jobs:
 
     - name: Process data
       run: |
-        input_files=$(find data -name '*.txt' -print0 | xargs -0)
+        input_files=$(find data -name '*.txt' -size +0c -print0 | xargs -0)
+        if [[ -z "$input_files" ]]; then
+          echo "Error: No valid input files found."
+          exit 1
+        fi
         ./src/process.sh -i "$input_files" -o processed.txt
         [ -s processed.txt ] || exit 1
 
