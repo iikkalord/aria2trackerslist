@@ -19,11 +19,11 @@ jobs:
 
     - name: Download tracker files
       run: |
-        curl -o data/trackers_all_https.txt https://example.com/trackers_all_https.txt
-        curl -o data/trackers_all_i2p.txt https://example.com/trackers_all_i2p.txt
-        curl -o data/trackers_all_udp.txt https://example.com/trackers_all_udp.txt
-        curl -o data/trackers_all_ws.txt https://example.com/trackers_all_ws.txt
-        curl -o data/trackers_best_ip.txt https://example.com/trackers_best_ip.txt
+        curl -o data/trackers_all_https.txt https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_https.txt
+        curl -o data/trackers_all_i2p.txt https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_i2p.txt
+        curl -o data/trackers_all_udp.txt https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_udp.txt
+        curl -o data/trackers_all_ws.txt https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_all_ws.txt
+        curl -o data/trackers_best_ip.txt https://raw.githubusercontent.com/ngosang/trackerslist/master/trackers_best_ip.txt
 
     - name: Make process.sh executable
       run: chmod +x src/process.sh
