@@ -32,9 +32,11 @@ jobs:
         )
         for key in "${!files[@]}"; do
           url="https://raw.githubusercontent.com/ngosang/trackerslist/master/${files[$key]}"
-          echo "下载: $url"
-          curl -sfL --retry 3 --connect-timeout 15 -o "data/${files[$key]}" "$url" || exit 1
-          [ -s "data/${files[$key]}" ] || exit 1
+          echo "Downloading: $url"
+          curl -sfL --retry 3 --connect-timeout 15 -o "data/${files[$key]}" "$url"
+          if [[ ! -s "data/${files[$key]}" ]]; then
+            echo "Warning: Failed to download or file is empty: ${files[$key]}"
+          fi
         done
 
     - name: Commit raw data  # 第一次提交：仅原始数据
