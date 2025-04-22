@@ -48,18 +48,28 @@ jobs:
             exit 1
           fi
         done
-
     - name: Setup processing environment
       run: |
-        # 安装必要依赖
-        sudo apt-get qq install grep sed
-
-        # 确保处理脚本存在
+        # 更新软件源
+        sudo apt-get update -qq
+        
+        # 安装最小化依赖
+        sudo apt-get install -qq --no-install-recommends \
+          grep \
+          sed \
+          coreutils \
+          findutils
+        
+        # 验证处理脚本
         if [ ! -f src/process.sh ]; then
-          echo "错误: process.sh 不存在！"
+          echo "::error::处理脚本不存在于 src/process.sh"
           exit 1
         fi
-        chmod +x src/process.sh
+        
+        If! chmod +x src/process.sh || [ ! -x src/process.sh ]; then
+          echo "::error::无法设置执行权限"
+          exit 1
+        fi
 
     - name: Run process script
       run: |
