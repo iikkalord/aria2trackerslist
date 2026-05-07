@@ -10,8 +10,6 @@ https://tracker.7471.top:443/announce
 
 https://torrents.tmtime.dev:443/announce
 
-https://tracker.ghostchu-services.top:443/announce
-
 https://tracker.gcrenwp.top:443/announce
 
 https://tracker.bt4g.com:443/announce
